@@ -12,8 +12,9 @@
 
 constexpr u32 BALLS_NUMBER = 3;
 constexpr double G = 6.674;
-constexpr u32 TARGET_FPS = 60;
+constexpr u32 TARGET_FPS = 120;
 constexpr double TIME_FACTOR = 20.;
+constexpr double MAX_ACUMULATOR = 0.25;
 constexpr double PHYS_DT = TIME_FACTOR / TARGET_FPS;
 
 typedef struct {
@@ -35,13 +36,20 @@ int main(void) {
     SetTargetFPS(TARGET_FPS);
 
     Balls balls = balls_init();
+    double acumulator = 0.;
 
     while (!WindowShouldClose()) {
         BeginDrawing();
 
         ClearBackground(BLACK);
-        balls_accelerate(&balls);
-        balls_move(&balls);
+
+        acumulator += GetFrameTime();
+        acumulator = MIN(acumulator, MAX_ACUMULATOR);
+        while (acumulator >= PHYS_DT) {
+            balls_accelerate(&balls);
+            balls_move(&balls);
+            acumulator -= PHYS_DT;
+        }
         balls_draw(&balls);
 
         DrawText("N-body??", 10, 10, 20, LIGHTGRAY);
@@ -56,10 +64,11 @@ int main(void) {
 }
 
 Balls balls_init() {
-    return (Balls){.mass = {10, 30, 50},
-            .radius = {10, 30, 50},
-            .position = {(Vec2){100, 100}, (Vec2){100, 200}, (Vec2){400, 400}},
-            .velocity = {(Vec2){1, 0}, (Vec2){-0.5, 0}, (Vec2){0, 0}}};
+    return (Balls){
+        .mass = {10, 30, 50},
+        .radius = {10, 30, 50},
+        .position = {(Vec2){100, 100}, (Vec2){100, 200}, (Vec2){400, 400}},
+        .velocity = {(Vec2){1, 0}, (Vec2){-0.5, 0}, (Vec2){0, 0}}};
 }
 
 void balls_accelerate(Balls *balls) {
