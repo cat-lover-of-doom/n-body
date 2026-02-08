@@ -13,9 +13,9 @@
 constexpr u32 BALLS_NUMBER = 3;
 constexpr double G = 6.674;
 constexpr u32 TARGET_FPS = 120;
-constexpr double TIME_FACTOR = 20.;
 constexpr double MAX_ACUMULATOR = 0.25;
-constexpr double PHYS_DT = TIME_FACTOR / TARGET_FPS;
+constexpr double PHYS_DT =  1. / 120;
+constexpr double SIM_SPEED = 2000.0;  // 1.0 = real-time, 2.0 = 2x speed, 0.5 = slow-mo
 
 typedef struct {
     double mass[BALLS_NUMBER];
@@ -43,7 +43,7 @@ int main(void) {
 
         ClearBackground(BLACK);
 
-        acumulator += GetFrameTime();
+        acumulator += GetFrameTime() * SIM_SPEED;
         acumulator = MIN(acumulator, MAX_ACUMULATOR);
         while (acumulator >= PHYS_DT) {
             balls_accelerate(&balls);
