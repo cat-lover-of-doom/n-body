@@ -6,16 +6,22 @@
 // Coordinates normalized
 // Shoks
 // fusions
-// DT
 // scale
 // trajectories
+// RK 4
+// assert
+constexpr u32 TARGET_FPS = 120;
+
+struct Window {
+    u32 height;
+    u32 width;
+} window;
 
 constexpr u32 BALLS_NUMBER = 3;
 constexpr double G = 6.674;
-constexpr u32 TARGET_FPS = 120;
 constexpr double MAX_ACUMULATOR = 0.25;
-constexpr double PHYS_DT =  1. / 120;
-constexpr double SIM_SPEED = 2000.0;  // 1.0 = real-time, 2.0 = 2x speed, 0.5 = slow-mo
+constexpr double PHYS_DT = 1. / 120;
+constexpr double SIM_SPEED = 2000.0;
 
 typedef struct {
     double mass[BALLS_NUMBER];
@@ -25,14 +31,16 @@ typedef struct {
     Vec2 acceleration[BALLS_NUMBER];
 } Balls;
 
+Vec2 screen_coordinates(Vec2 central_coordinates);
 Balls balls_init();
 void balls_accelerate(Balls *balls);
 void balls_move(Balls *balls);
 void balls_draw(Balls *balls);
 
+struct Window window = {.width = 800, .height = 600};
 int main(void) {
-
-    InitWindow(800, 600, "N-body??");
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(window.width, window.height, "N-body??");
     SetTargetFPS(TARGET_FPS);
 
     Balls balls = balls_init();
@@ -63,11 +71,22 @@ int main(void) {
     return 0;
 }
 
+inline Vec2 screen_coordinates(Vec2 central_coordinates) {
+    if (IsWindowResized()) {
+        window.width = GetScreenWidth();
+        window.height = GetScreenHeight();
+    }
+
+    central_coordinates.x += window.width / 2.;
+    central_coordinates.y = (window.height - central_coordinates.y) - window.height / 2.;
+    return central_coordinates;
+}
+
 Balls balls_init() {
     return (Balls){
         .mass = {10, 30, 50},
         .radius = {10, 30, 50},
-        .position = {(Vec2){100, 100}, (Vec2){100, 200}, (Vec2){400, 400}},
+        .position = {(Vec2){0, 0}, (Vec2){0, 100}, (Vec2){-200, -100}},
         .velocity = {(Vec2){1, 0}, (Vec2){-0.5, 0}, (Vec2){0, 0}}};
 }
 
@@ -108,9 +127,8 @@ void balls_move(Balls *balls) {
 
 void balls_draw(Balls *balls) {
     for (u32 i = 0; i < BALLS_NUMBER; ++i) {
-        i32 x = (i32)balls->position[i].x;
-        i32 y = (i32)balls->position[i].y;
+        Vec2 screen_p = screen_coordinates(balls->position[i]); 
         double r = balls->radius[i];
-        DrawCircle(x, y, r, LIGHTGRAY);
+        DrawCircle(screen_p.x,screen_p.y, r, LIGHTGRAY);
     }
 }
