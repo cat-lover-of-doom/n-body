@@ -10,6 +10,7 @@
 // trajectories
 // RK 4
 // assert
+// drag and drop
 constexpr u32 TARGET_FPS = 120;
 
 struct Window {
@@ -18,7 +19,7 @@ struct Window {
 } window;
 
 constexpr u32 BALLS_NUMBER = 3;
-constexpr double G = 6.674;
+constexpr double G = 6.674 * 10;
 constexpr double MAX_ACUMULATOR = 0.25;
 constexpr double PHYS_DT = 1. / 120;
 constexpr double SIM_SPEED = 2000.0;
@@ -78,7 +79,8 @@ inline Vec2 screen_coordinates(Vec2 central_coordinates) {
     }
 
     central_coordinates.x += window.width / 2.;
-    central_coordinates.y = (window.height - central_coordinates.y) - window.height / 2.;
+    central_coordinates.y =
+        (window.height - central_coordinates.y) - window.height / 2.;
     return central_coordinates;
 }
 
@@ -127,8 +129,8 @@ void balls_move(Balls *balls) {
 
 void balls_draw(Balls *balls) {
     for (u32 i = 0; i < BALLS_NUMBER; ++i) {
-        Vec2 screen_p = screen_coordinates(balls->position[i]); 
+        Vec2 screen_p = screen_coordinates(balls->position[i]);
         double r = balls->radius[i];
-        DrawCircle(screen_p.x,screen_p.y, r, LIGHTGRAY);
+        DrawCircle(screen_p.x, screen_p.y, r, LIGHTGRAY);
     }
 }
