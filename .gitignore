@@ -3,3 +3,14 @@ build/raylib_app
 *.o
 .DS_Store
 .cache/
+compile-commands.json
+
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+Makefile

@@ -16,7 +16,7 @@ enum {
 
 static const float G = 6.674 * 1000.0;
 static const float MAX_ACUMULATOR = 0.25;
-static const float PHYS_DT = 0.1 / (double)TARGET_FPS;
+static const float PHYS_DT = 0.1 / TARGET_FPS;
 float GRAVITATIONAL_SOFTENING = 0.1;
 static const float SIM_SPEED = 2.0;
 
@@ -181,7 +181,7 @@ static Balls balls_init(void) {
 
 static void *balls_accelerate_index(void *args) {
     const float eps2 =
-        (float)GRAVITATIONAL_SOFTENING * (double)GRAVITATIONAL_SOFTENING;
+        GRAVITATIONAL_SOFTENING * GRAVITATIONAL_SOFTENING;
     typedef struct Args {
         Balls *balls;
         u32 start;
@@ -202,15 +202,15 @@ static void *balls_accelerate_index(void *args) {
                 continue;
 
             const Vec2 pj = balls->positions[j];
-            const float dx = (double)pj.x - (double)pi.x;
-            const float dy = (double)pj.y - (double)pi.y;
+            const float dx = pj.x - pi.x;
+            const float dy = pj.y - pi.y;
 
             const float r2 = dx * dx + dy * dy + eps2;
 
             const float inv_r = 1. / sqrt(r2);
             const float inv_r3 = inv_r * inv_r * inv_r;
 
-            const float s = G * (double)balls->masses[j] * inv_r3;
+            const float s = G * balls->masses[j] * inv_r3;
 
             ax += s * dx;
             ay += s * dy;
