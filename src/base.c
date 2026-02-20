@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#include <stdint.h>
 
 typedef int8_t i8;
 typedef int16_t i16;
@@ -84,3 +87,14 @@ double frand(double a, double b)
 {
     return a + (b - a) * frand01();
 }
+
+static u32 get_physical_cores(void) {
+    u32 n = 0;
+    size_t sz = sizeof(n);
+    if (sysctlbyname("hw.physicalcpu", &n, &sz, NULL, 0) != 0 || n == 0) {
+        // Fallback
+        sysctlbyname("hw.ncpu", &n, &sz, NULL, 0);
+    }
+    return (n == 0) ? 1u : n;
+}
+

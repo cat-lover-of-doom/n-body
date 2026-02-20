@@ -1,6 +1,7 @@
 #include "base.c"
 #include "raylib.h"
 #include <assert.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <time.h>
 
@@ -61,7 +62,8 @@ static Balls balls_init(void);
 static void balls_accelerate(Balls *balls);
 static void balls_colide(Balls *balls);
 static void balls_resolve_colition(Balls *balls, u32 i, u32 j, Vec2 n12);
-static void balls_separate_overlap(Balls *balls, u32 i, u32 j, Vec2 n12, double dist);
+static void balls_separate_overlap(Balls *balls, u32 i, u32 j, Vec2 n12,
+                                   double dist);
 static void balls_move(Balls *balls);
 static void balls_draw(const Balls *balls, Color color);
 static Vec2 to_screen_position(Vec2 world_position);
@@ -175,18 +177,27 @@ static Balls balls_init(void) {
 
     return result;
 }
+static void *balls_accelerate_index(void *args) {
+    const double eps2 =
+        (double)GRAVITATIONAL_SOFTENING * (double)GRAVITATIONAL_SOFTENING;
+    typedef struct Args {
+        Balls *balls;
+        u32 start;
+        u32 end;
+    } Args;
 
-static void balls_accelerate(Balls *balls) {
-    const double eps2 = (double)GRAVITATIONAL_SOFTENING * (double)GRAVITATIONAL_SOFTENING;
-
-    for (u32 i = 0; i < BALLS_NUMBER; ++i) {
+    Balls *balls = ((Args *)args)->balls;
+    u32 start = ((Args *)args)->start;
+    u32 end = ((Args *)args)->end;
+    for (u32 i = start; i < end; ++i) {
         const Vec2 pi = balls->positions[i];
 
         double ax = 0.;
         double ay = 0.;
 
         for (u32 j = 0; j < BALLS_NUMBER; ++j) {
-            if (j == i) continue;
+            if (j == i)
+                continue;
 
             const Vec2 pj = balls->positions[j];
             const double dx = (double)pj.x - (double)pi.x;
@@ -194,7 +205,7 @@ static void balls_accelerate(Balls *balls) {
 
             const double r2 = dx * dx + dy * dy + eps2;
 
-            const double inv_r  = 1. / sqrt(r2);
+            const double inv_r = 1. / sqrt(r2);
             const double inv_r3 = inv_r * inv_r * inv_r;
 
             const double s = G * (double)balls->masses[j] * inv_r3;
@@ -203,8 +214,40 @@ static void balls_accelerate(Balls *balls) {
             ay += s * dy;
         }
 
-        balls->accelerations[i] = (Vec2){ (float)ax, (float)ay };
+        balls->accelerations[i] = (Vec2){(double)ax, (double)ay};
     }
+    return (void *)0;
+}
+
+static void balls_accelerate(Balls *balls) {
+    typedef struct Args {
+        Balls *balls;
+        u32 start;
+        u32 end;
+    } Args;
+
+    const u32 T = get_physical_cores();
+    pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * T);
+    Args *arglist = (Args *)malloc(sizeof(Args) * T);
+    assert(threads && arglist);
+
+    const u32 chunk = (BALLS_NUMBER + T - 1) / T;
+    for (u32 t = 0; t < T; ++t) {
+        arglist[t].balls = balls;
+        arglist[t].start = t * chunk;
+        arglist[t].end = (arglist[t].start + chunk > BALLS_NUMBER)
+                             ? BALLS_NUMBER
+                             : (arglist[t].start + chunk);
+        int rc = pthread_create(&threads[t], NULL, &balls_accelerate_index,
+                                &arglist[t]);
+        assert(rc == 0);
+    }
+    for (uint32_t t = 0; t < T; ++t) {
+        int rc = pthread_join(threads[t], NULL);
+        assert(rc == 0);
+    }
+    free(arglist);
+    free(threads);
 }
 
 static void balls_colide(Balls *balls) {
@@ -212,7 +255,8 @@ static void balls_colide(Balls *balls) {
 
     for (u32 i = 0; i < BALLS_NUMBER - 1; ++i) {
         for (u32 j = i + 1; j < BALLS_NUMBER; ++j) {
-            Vec2 distance_vec = vec2_sub(balls->positions[j], balls->positions[i]);
+            Vec2 distance_vec =
+                vec2_sub(balls->positions[j], balls->positions[i]);
             double distance_scalar2 = vec2_dot(distance_vec, distance_vec);
 
             double radius_sum = balls->radiuses[i] + balls->radiuses[j];
@@ -253,7 +297,8 @@ static void balls_resolve_colition(Balls *balls, u32 i, u32 j, Vec2 n12) {
     balls->velocities[j] = vec2_add(v2_tangential, vec2_scale(n12, vprime2));
 }
 
-static void balls_separate_overlap(Balls *balls, u32 i, u32 j, Vec2 n12, double dist) {
+static void balls_separate_overlap(Balls *balls, u32 i, u32 j, Vec2 n12,
+                                   double dist) {
     assert(dist >= 0);
 
     const double min_dist = balls->radiuses[i] + balls->radiuses[j];
@@ -268,8 +313,10 @@ static void balls_separate_overlap(Balls *balls, u32 i, u32 j, Vec2 n12, double 
         COLLISION_PERCENT * MAX(penetration - COLLISION_SLOP, 0.0) / inv_sum;
     Vec2 correction = vec2_scale(n12, corr_mag);
 
-    balls->positions[i] = vec2_sub(balls->positions[i], vec2_scale(correction, inv_m1));
-    balls->positions[j] = vec2_add(balls->positions[j], vec2_scale(correction, inv_m2));
+    balls->positions[i] =
+        vec2_sub(balls->positions[i], vec2_scale(correction, inv_m1));
+    balls->positions[j] =
+        vec2_add(balls->positions[j], vec2_scale(correction, inv_m2));
 }
 
 static void balls_move(Balls *balls) {
