@@ -5,13 +5,9 @@
 #include <stdbool.h>
 #include <time.h>
 
-// TODO: fusion
-
-typedef unsigned int u32;
-
 enum {
     TARGET_FPS = 120,
-    BALLS_NUMBER = 600,
+    BALLS_NUMBER = 500,
 };
 
 static const float G = 6.674 * 1000.0;
